@@ -3,7 +3,11 @@
 import urllib3 as urllib
 from bs4 import BeautifulSoup
 import json
+import sys
+from pathlib import Path
+from platformdirs import user_config_dir
 
+CONFIG_PATH = user_config_dir("yt-post-notifier") + "/config.json"
 
 def util_requestData(url:str) -> str | None:
     response = urllib.request("GET", url)
@@ -63,7 +67,56 @@ def util_extract_posts(ytInitialData:dict) -> dict | None:
 
     return allResults
 
-def loadData(user:str) -> list:
+def util_verify_config(config:list):
+    if type(config) != list: print("Invalid Config Structure: Config is no list", file=sys.stderr)
+
+    for entry in config:
+        if type(entry) != dict:
+            print("Invalid Config Structure: List entry is no dict", file=sys.stderr)
+            exit(1)
+
+        if "user_name" not in entry: 
+            print("Invalid Config Structure: Entry does not contain required field 'user_name'", file=sys.stderr)
+            exit(1)
+        if type(entry["user_name"]) != str:
+            print("Invalid Config Structure: Entry field 'user_name' is not of type string", file=sys.stderr)
+            exit(1)
+        if "display_name" not in entry:
+            print("Invalid Config Structure: Entry does not contain required field 'display_name'", file=sys.stderr)
+            exit(1)
+        if type(entry["display_name"]) != str:
+            print("Invalid Config Structure: Entry field 'display_name' is not of type string", file=sys.stderr)
+            exit(1)
+        if "urgency" not in entry:
+            print("Invalid Config Structure: Entry does not contain required field 'urgency'", file=sys.stderr)
+            exit(1)
+        if type(entry["urgency"]) != int:
+            print("Invalid Config Structure: Entry field 'urgency' is not of type int", file=sys.stderr)
+            exit(1)
+        if entry["urgency"] < -1 or entry["urgency"] > 1:
+            print("Invalid Config Structure: Entry field 'urgency' is not one of -1;0;1", file=sys.stderr)
+            exit(1)
+
+def util_load_config() -> list:
+    file = Path(CONFIG_PATH)
+    if not file.exists():
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.touch()
+        file.write_text("[\n    \n]\n\n")
+        print("No config file exists. Creating new one at " + CONFIG_PATH)
+        print("Exiting to allow the user to set up configuration")
+        exit()
+
+    content = file.read_text()
+    try:
+        data = json.loads(content)
+    except:
+        print("Invalid Config Structure: Incorrect JSON", file=sys.stderr)
+        exit(1)
+
+    return data
+
+def load_data_from_user(user:str) -> list:
     html = util_requestData("https://youtube.com/@" + user + "/posts")
     if html == None: return []
 
@@ -75,3 +128,12 @@ def loadData(user:str) -> list:
 
     return posts
 
+def read_config() -> list:
+    config = util_load_config()
+    util_verify_config(config)
+
+
+def main():
+    read_config()
+
+main()
