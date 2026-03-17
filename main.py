@@ -71,6 +71,15 @@ def util_verify_config(config:list):
     if type(config) != list: print("Invalid Config Structure: Config is no list", file=sys.stderr)
 
     for entry in config:
+        if type(entry) == str:
+            config.remove(entry)
+            config.append({
+                "user_name": entry,
+                "display_name": entry,
+                "urgency": 0
+            })
+            continue
+
         if type(entry) != dict:
             print("Invalid Config Structure: List entry is no dict", file=sys.stderr)
             exit(1)
@@ -116,7 +125,7 @@ def util_load_config() -> list:
 
     return data
 
-def load_data_from_user(user:str) -> list:
+def load_posts_from_user(user:str) -> list:
     html = util_requestData("https://youtube.com/@" + user + "/posts")
     if html == None: return []
 
@@ -131,9 +140,41 @@ def load_data_from_user(user:str) -> list:
 def read_config() -> list:
     config = util_load_config()
     util_verify_config(config)
+    return config
 
+def usage():
+    print("Usage:", sys.argv[0], file=sys.stderr)
+    print("      ", sys.argv[0], "test scrape <USER_NAME>", file=sys.stderr)
+    print("      ", sys.argv[0], "test notify <USER_NAME>", file=sys.stderr)
+    print("      ", sys.argv[0], "test display <USER_NAME>", file=sys.stderr)
+    print("      ", sys.argv[0], "test dump_config", file=sys.stderr)
+    exit(1)
+
+def run_test(type:str, arg:str):
+    match type:
+        case "scrape":
+            print(json.dumps(load_posts_from_user(arg), indent=4))
+        case "notify":
+            pass
+        case "display":
+            pass
+        case "dump_config":
+            print(json.dumps(read_config(), indent=4))
 
 def main():
-    read_config()
+    if len(sys.argv) == 1:
+        print("Not yet implemented", file=sys.stderr)
+    elif sys.argv[1] != "test" or len(sys.argv) < 3:
+        usage()
+    else:
+        if sys.argv[2] not in ["scrape", "notify", "display", "dump_config"]: usage()
+        if sys.argv[2] == "dump_config":
+            if len(sys.argv) != 3: usage()
+            run_test("dump_config", None)
+        else:
+            if len(sys.argv) != 4: usage()
+            run_test(sys.argv[2], sys.argv[3])
+
+    
 
 main()
