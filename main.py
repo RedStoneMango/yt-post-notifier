@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import json
 import sys
 import re
+import webbrowser
 import asyncio
 from pathlib import Path
 from platformdirs import user_config_dir
@@ -81,6 +82,10 @@ def util_verify_config(config:dict):
     config.setdefault("notification_timeout", 60)
     if type(config["notification_timeout"]) != int:
         print("Invalid Config Structure: Field 'notification_timeout' is not an int", file=sys.stderr)
+        exit(1)
+    config.setdefault("internal_post_display", True)
+    if type(config["internal_post_display"]) != bool:
+        print("Invalid Config Structure: Field 'internal_post_display' is not a bool", file=sys.stderr)
         exit(1)
     config.setdefault("users", [])
     if type(config["users"]) != list:
@@ -252,6 +257,21 @@ def util_format_text(format:str, name:str, post:str) -> str:
         
     return named
 
+def util_display_post_internally(user:str, display_name:str):
+    import webview # Only import here in case the user doesnt want to use the webview and import the dependencies
+    webview.create_window("Yt-Post-Notifier - " + display_name, "https://youtube.com/@" + user + "/posts")
+    webview.start()
+
+def util_display_post_externally(user:str):
+    webbrowser.open("https://youtube.com/@" + user + "/posts")
+    
+
+def display_post(config:dict, user:str, display_name:str):
+    if config["internal_post_display"]:
+        util_display_post_internally(user, display_name)
+    else:
+        util_display_post_externally(user)
+
 def load_posts_from_user(user:str) -> list:
     html = util_requestData("https://youtube.com/@" + user + "/posts")
     if html == None: return []
@@ -270,15 +290,16 @@ def notify(configs:dict, user:str, post:str):
         print("[Warning]: Cannot find configuration for user " + user, file=sys.stderr)
         return
 
+    display_name = config["display_name"]
     asyncio.run(util_send_notification(
-        util_format_text(config["title_text"], config["display_name"], post),
-        util_format_text(config["message_text"], config["display_name"], post),
+        util_format_text(config["title_text"], display_name, post),
+        util_format_text(config["message_text"], display_name, post),
         util_create_icon(config),
         util_create_sound(config),
         util_create_urgency(config),
         config["duration"],
         configs["notification_timeout"],
-        lambda: {}
+        lambda: display_post(configs, user, display_name)
     ))
 
 def read_config() -> dict:
@@ -301,7 +322,8 @@ def run_test(type:str, arg:str, arg2:str):
         case "notify":
             notify(read_config(), arg, arg2)
         case "display":
-            pass
+            config = read_config()
+            display_post(config, arg, util_find_user_config(config, arg)["display_name"])
         case "dump_config":
             print(json.dumps(read_config(), indent=4))
 
