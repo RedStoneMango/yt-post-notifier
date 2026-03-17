@@ -6,6 +6,7 @@ import json
 import sys
 from pathlib import Path
 from platformdirs import user_config_dir
+from desktop_notifier import Icon, DEFAULT_ICON, Sound, DEFAULT_SOUND
 
 CONFIG_PATH = user_config_dir("yt-post-notifier") + "/config.json"
 
@@ -73,38 +74,58 @@ def util_verify_config(config:list):
     for entry in config:
         if type(entry) == str:
             config.remove(entry)
-            config.append({
-                "user_name": entry,
-                "display_name": entry,
-                "urgency": 0
-            })
-            continue
+            entry = {"user_name": entry}
+            config.append(entry)
 
         if type(entry) != dict:
             print("Invalid Config Structure: List entry is no dict", file=sys.stderr)
             exit(1)
 
         if "user_name" not in entry: 
-            print("Invalid Config Structure: Entry does not contain required field 'user_name'", file=sys.stderr)
+            print("Invalid Config Structure: Entry does not contain mandatory field 'user_name'", file=sys.stderr)
             exit(1)
         if type(entry["user_name"]) != str:
             print("Invalid Config Structure: Entry field 'user_name' is not of type string", file=sys.stderr)
             exit(1)
-        if "display_name" not in entry:
-            print("Invalid Config Structure: Entry does not contain required field 'display_name'", file=sys.stderr)
-            exit(1)
+        entry.setdefault("display_name", entry["user_name"])
         if type(entry["display_name"]) != str:
             print("Invalid Config Structure: Entry field 'display_name' is not of type string", file=sys.stderr)
             exit(1)
-        if "urgency" not in entry:
-            print("Invalid Config Structure: Entry does not contain required field 'urgency'", file=sys.stderr)
-            exit(1)
+        entry.setdefault("urgency", 0)
         if type(entry["urgency"]) != int:
             print("Invalid Config Structure: Entry field 'urgency' is not of type int", file=sys.stderr)
             exit(1)
         if entry["urgency"] < -1 or entry["urgency"] > 1:
             print("Invalid Config Structure: Entry field 'urgency' is not one of -1;0;1", file=sys.stderr)
             exit(1)
+        entry.setdefault("title_text", "${NAME} posted!")
+        if type(entry["title_text"]) != str:
+            print("Invalid Config Structure: Entry field 'title_text' is not of type str", file=sys.stderr)
+            exit(1)
+        entry.setdefault("message_text", "${NAME} posted a new community post: ${POST;100}")
+        if type(entry["message_text"]) != str:
+            print("Invalid Config Structure: Entry field 'message_text' is not of type str", file=sys.stderr)
+            exit(1)
+        entry.setdefault("icon", DEFAULT_ICON.path.as_uri())
+        if type(entry["icon"]) != str:
+            print("Invalid Config Structure: Entry field 'icon' is not of type str", file=sys.stderr)
+            exit(1)
+        try:
+            Icon(uri=entry["icon"])
+        except:
+            print("Invalid Config Structure: Entry field 'icon' is not a valid URI", file=sys.stderr)
+            exit(1)
+        if entry.get("sound") == None:
+            entry["sound"] = DEFAULT_SOUND.name
+        else:
+            if type(entry["sound"]) != str:
+                print("Invalid Config Structure: Entry field 'sound' is not of type str", file=sys.stderr)
+                exit(1)
+            try:
+                Sound(uri=entry["sound"])
+            except:
+                print("Invalid Config Structure: Entry field 'sound' is not a valid URI", file=sys.stderr)
+                exit(1)
 
 def util_load_config() -> list:
     file = Path(CONFIG_PATH)
@@ -143,14 +164,14 @@ def read_config() -> list:
     return config
 
 def usage():
-    print("Usage:", sys.argv[0], file=sys.stderr)
-    print("      ", sys.argv[0], "test scrape <USER_NAME>", file=sys.stderr)
-    print("      ", sys.argv[0], "test notify <USER_NAME>", file=sys.stderr)
-    print("      ", sys.argv[0], "test display <USER_NAME>", file=sys.stderr)
-    print("      ", sys.argv[0], "test dump_config", file=sys.stderr)
+    print("Usage:", sys.argv[0], "                                # Runs the tool", file=sys.stderr)
+    print("      ", sys.argv[0], "test scrape <USER_NAME>         # Prints the last posts of USER_NAME in a JSON format", file=sys.stderr)
+    print("      ", sys.argv[0], "test notify <USER_NAME> <POST>  # Sends a test notification that USER_NAME posted a post with content POST, making use of the user's notification configuration", file=sys.stderr)
+    print("      ", sys.argv[0], "test display <USER_NAME>        # Renders the USER_NAME's posts in a seperate window", file=sys.stderr)
+    print("      ", sys.argv[0], "test dump_config                # Loads the tool configuration, initilizeses defaults where needed and prints the whole config object in a JSON format", file=sys.stderr)
     exit(1)
 
-def run_test(type:str, arg:str):
+def run_test(type:str, arg:str, arg2:str):
     match type:
         case "scrape":
             print(json.dumps(load_posts_from_user(arg), indent=4))
@@ -170,11 +191,12 @@ def main():
         if sys.argv[2] not in ["scrape", "notify", "display", "dump_config"]: usage()
         if sys.argv[2] == "dump_config":
             if len(sys.argv) != 3: usage()
-            run_test("dump_config", None)
+            run_test("dump_config", None, None)
+        elif sys.argv[2] == "notify":
+            if len(sys.argv) != 5: usage()
+            run_test("notify", sys.argv[3], sys.argv[4])
         else:
             if len(sys.argv) != 4: usage()
-            run_test(sys.argv[2], sys.argv[3])
-
-    
+            run_test(sys.argv[2], sys.argv[3], None)
 
 main()
