@@ -7,6 +7,7 @@ import urllib3 as urllib
 from bs4 import BeautifulSoup
 import json
 import sys
+import re
 import asyncio
 from pathlib import Path
 from platformdirs import user_config_dir
@@ -228,6 +229,29 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
 
     await done_event.wait()
 
+def util_format_text(format:str, name:str, post:str) -> str:
+    named = format.replace("${NAME}", name)
+    matches = re.finditer("\\${POST(?:;(\\d+))?\\}", named)
+    if matches == None: return named
+
+    offset = 0
+    for match in matches:
+        size = match.group(1)
+        exp = match.group(0)
+        start = match.start()
+        end = match.end()
+
+        if size == None:
+            tr_post = post
+        else:
+            maxChars = int(size)
+            tr_post = (post[:maxChars] + '...') if len(post) > maxChars else post
+
+        named = named[:start + offset] + tr_post + named[end + offset:]
+        offset -= len(exp) - len(tr_post)
+        
+    return named
+
 def load_posts_from_user(user:str) -> list:
     html = util_requestData("https://youtube.com/@" + user + "/posts")
     if html == None: return []
@@ -247,8 +271,8 @@ def notify(configs:dict, user:str, post:str):
         return
 
     asyncio.run(util_send_notification(
-        config["title_text"],
-        config["message_text"],
+        util_format_text(config["title_text"], config["display_name"], post),
+        util_format_text(config["message_text"], config["display_name"], post),
         util_create_icon(config),
         util_create_sound(config),
         util_create_urgency(config),
