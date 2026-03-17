@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import signal
 from typing import Any, Callable
 
 import urllib3 as urllib
@@ -71,73 +72,84 @@ def util_extract_posts(ytInitialData:dict) -> dict | None:
 
     return allResults
 
-def util_verify_config(config:list):
-    if type(config) != list: print("Invalid Config Structure: Config is no list", file=sys.stderr)
+def util_verify_config(config:dict):
+    if type(config) != dict:
+        print("Invalid Config Structure: Config is no dict", file=sys.stderr)
+        exit(1)
 
-    for entry in config:
+    config.setdefault("notification_timeout", 60)
+    if type(config["notification_timeout"]) != int:
+        print("Invalid Config Structure: Field 'notification_timeout' is not an int", file=sys.stderr)
+        exit(1)
+    config.setdefault("users", [])
+    if type(config["users"]) != list:
+        print("Invalid Config Structure: Field 'users' is not a list", file=sys.stderr)
+        exit(1)
+
+    for entry in config["users"]:
         if type(entry) == str:
-            config.remove(entry)
+            config["users"].remove(entry)
             entry = {"user_name": entry}
-            config.append(entry)
+            config["users"].append(entry)
 
         if type(entry) != dict:
-            print("Invalid Config Structure: List entry is no dict", file=sys.stderr)
+            print("Invalid Config Structure: Userlist entry is no dict", file=sys.stderr)
             exit(1)
 
         if "user_name" not in entry: 
-            print("Invalid Config Structure: Entry does not contain mandatory field 'user_name'", file=sys.stderr)
+            print("Invalid Config Structure: User entry does not contain mandatory field 'user_name'", file=sys.stderr)
             exit(1)
         if type(entry["user_name"]) != str:
-            print("Invalid Config Structure: Entry field 'user_name' is not of type string", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'user_name' is not of type string", file=sys.stderr)
             exit(1)
         entry.setdefault("display_name", entry["user_name"])
         if type(entry["display_name"]) != str:
-            print("Invalid Config Structure: Entry field 'display_name' is not of type string", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'display_name' is not of type string", file=sys.stderr)
             exit(1)
         entry.setdefault("urgency", 0)
         if type(entry["urgency"]) != int:
-            print("Invalid Config Structure: Entry field 'urgency' is not of type int", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'urgency' is not of type int", file=sys.stderr)
             exit(1)
         if entry["urgency"] < -1 or entry["urgency"] > 1:
-            print("Invalid Config Structure: Entry field 'urgency' is not one of -1;0;1", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'urgency' is not one of -1;0;1", file=sys.stderr)
             exit(1)
         entry.setdefault("title_text", "${NAME} posted!")
         if type(entry["title_text"]) != str:
-            print("Invalid Config Structure: Entry field 'title_text' is not of type str", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'title_text' is not of type str", file=sys.stderr)
             exit(1)
         entry.setdefault("message_text", "${NAME} posted a new community post: ${POST;100}")
         if type(entry["message_text"]) != str:
-            print("Invalid Config Structure: Entry field 'message_text' is not of type str", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'message_text' is not of type str", file=sys.stderr)
             exit(1)
         entry.setdefault("icon", DEFAULT_ICON.path.as_uri())
         if type(entry["icon"]) != str:
-            print("Invalid Config Structure: Entry field 'icon' is not of type str", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'icon' is not of type str", file=sys.stderr)
             exit(1)
         try:
             Icon(uri=entry["icon"])
         except:
-            print("Invalid Config Structure: Entry field 'icon' is not a valid URI", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'icon' is not a valid URI", file=sys.stderr)
             exit(1)
         if entry.get("sound") == None:
             entry["sound"] = DEFAULT_SOUND.name
         else:
             if type(entry["sound"]) != str:
-                print("Invalid Config Structure: Entry field 'sound' is not of type str", file=sys.stderr)
+                print("Invalid Config Structure: User entry field 'sound' is not of type str", file=sys.stderr)
                 exit(1)
             try:
                 Sound(uri=entry["sound"])
             except:
-                print("Invalid Config Structure: Entry field 'sound' is not a valid URI", file=sys.stderr)
+                print("Invalid Config Structure: User entry field 'sound' is not a valid URI", file=sys.stderr)
                 exit(1)
         entry.setdefault("duration", 5)
         if type(entry["duration"]) != int:
-            print("Invalid Config Structure: Entry field 'duration' is not of type int", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'duration' is not of type int", file=sys.stderr)
             exit(1)
         if entry["duration"] < 1:
-            print("Invalid Config Structure: Entry field 'duration' is less than 1", file=sys.stderr)
+            print("Invalid Config Structure: User entry field 'duration' is less than 1", file=sys.stderr)
             exit(1)
 
-def util_load_config() -> list:
+def util_load_config() -> dict:
     file = Path(CONFIG_PATH)
     if not file.exists():
         file.parent.mkdir(parents=True, exist_ok=True)
@@ -157,10 +169,10 @@ def util_load_config() -> list:
     return data
 
 def util_find_user_config(config:list, user:str) -> dict:
-    for user_conf in config:
+    for user_conf in config["users"]:
         if user_conf.get("user_name") == user:
             return user_conf
-        
+
 def util_create_urgency(config:dict) -> Urgency:
     val = config["urgency"]
     return Urgency.Low if val == -1 else (Urgency.Normal if val == 0 else Urgency.Critical)
@@ -171,7 +183,7 @@ def util_create_icon(config:dict) -> Icon:
 def util_create_sound(config:dict) -> Sound:
     return Sound(uri=config["sound"]) if config["sound"] != DEFAULT_SOUND.name else DEFAULT_SOUND
         
-async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound, urgency:Urgency, duration:int, action:Callable[[], Any]):
+async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound, urgency:Urgency, duration:int, timeout:int, action:Callable[[], Any]):
     notifier = DesktopNotifier(app_name="Yt-Post-Notifier", app_icon=icon)
 
     done_event = asyncio.Event()
@@ -186,7 +198,7 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
         done_event.set()
 
     async def timeout_task():
-        await asyncio.sleep(duration)
+        await asyncio.sleep(timeout)
         try:
             notifier.close()
         except Exception:
@@ -210,6 +222,10 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
         timeout=duration
     )
 
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, done_event.set)
+    loop.add_signal_handler(signal.SIGTERM, done_event.set)
+
     await done_event.wait()
 
 def load_posts_from_user(user:str) -> list:
@@ -224,7 +240,7 @@ def load_posts_from_user(user:str) -> list:
 
     return posts
 
-def notify(configs:list, user:str, post:str):
+def notify(configs:dict, user:str, post:str):
     config = util_find_user_config(configs, user)
     if config == None:
         print("[Warning]: Cannot find configuration for user " + user, file=sys.stderr)
@@ -237,10 +253,11 @@ def notify(configs:list, user:str, post:str):
         util_create_sound(config),
         util_create_urgency(config),
         config["duration"],
+        configs["notification_timeout"],
         lambda: {}
     ))
 
-def read_config() -> list:
+def read_config() -> dict:
     config = util_load_config()
     util_verify_config(config)
     return config
