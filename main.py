@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
+from typing import Any, Callable
+
 import urllib3 as urllib
 from bs4 import BeautifulSoup
 import json
 import sys
+import asyncio
 from pathlib import Path
 from platformdirs import user_config_dir
-from desktop_notifier import Icon, DEFAULT_ICON, Sound, DEFAULT_SOUND
+from desktop_notifier import DesktopNotifier, Urgency, Button, Icon, DEFAULT_ICON, Sound, DEFAULT_SOUND
 
 CONFIG_PATH = user_config_dir("yt-post-notifier") + "/config.json"
 
@@ -126,6 +129,13 @@ def util_verify_config(config:list):
             except:
                 print("Invalid Config Structure: Entry field 'sound' is not a valid URI", file=sys.stderr)
                 exit(1)
+        entry.setdefault("duration", 5)
+        if type(entry["duration"]) != int:
+            print("Invalid Config Structure: Entry field 'duration' is not of type int", file=sys.stderr)
+            exit(1)
+        if entry["duration"] < 1:
+            print("Invalid Config Structure: Entry field 'duration' is less than 1", file=sys.stderr)
+            exit(1)
 
 def util_load_config() -> list:
     file = Path(CONFIG_PATH)
@@ -146,6 +156,62 @@ def util_load_config() -> list:
 
     return data
 
+def util_find_user_config(config:list, user:str) -> dict:
+    for user_conf in config:
+        if user_conf.get("user_name") == user:
+            return user_conf
+        
+def util_create_urgency(config:dict) -> Urgency:
+    val = config["urgency"]
+    return Urgency.Low if val == -1 else (Urgency.Normal if val == 0 else Urgency.Critical)
+
+def util_create_icon(config:dict) -> Icon:
+    return Icon(uri=config["icon"])
+
+def util_create_sound(config:dict) -> Sound:
+    return Sound(uri=config["sound"]) if config["sound"] != DEFAULT_SOUND.name else DEFAULT_SOUND
+        
+async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound, urgency:Urgency, duration:int, action:Callable[[], Any]):
+    notifier = DesktopNotifier(app_name="Yt-Post-Notifier", app_icon=icon)
+
+    done_event = asyncio.Event()
+
+    def wrapped_action():
+        try:
+            action()
+        finally:
+            done_event.set()
+
+    def on_dismissed():
+        done_event.set()
+
+    async def timeout_task():
+        await asyncio.sleep(duration)
+        try:
+            notifier.close()
+        except Exception:
+            pass
+        done_event.set()
+    asyncio.create_task(timeout_task())
+
+    await notifier.send(
+        title=title,
+        message=message,
+        urgency=urgency,
+        buttons=[
+            Button(
+                title="Open Posts",
+                on_pressed=wrapped_action,
+            )
+        ],
+        on_clicked=wrapped_action,
+        on_dismissed=on_dismissed,
+        sound=sound,
+        timeout=duration
+    )
+
+    await done_event.wait()
+
 def load_posts_from_user(user:str) -> list:
     html = util_requestData("https://youtube.com/@" + user + "/posts")
     if html == None: return []
@@ -157,6 +223,22 @@ def load_posts_from_user(user:str) -> list:
     if posts == None: return []
 
     return posts
+
+def notify(configs:list, user:str, post:str):
+    config = util_find_user_config(configs, user)
+    if config == None:
+        print("[Warning]: Cannot find configuration for user " + user, file=sys.stderr)
+        return
+
+    asyncio.run(util_send_notification(
+        config["title_text"],
+        config["message_text"],
+        util_create_icon(config),
+        util_create_sound(config),
+        util_create_urgency(config),
+        config["duration"],
+        lambda: {}
+    ))
 
 def read_config() -> list:
     config = util_load_config()
@@ -176,7 +258,7 @@ def run_test(type:str, arg:str, arg2:str):
         case "scrape":
             print(json.dumps(load_posts_from_user(arg), indent=4))
         case "notify":
-            pass
+            notify(read_config(), arg, arg2)
         case "display":
             pass
         case "dump_config":
