@@ -163,7 +163,7 @@ def util_load_config() -> dict:
     if not file.exists():
         file.parent.mkdir(parents=True, exist_ok=True)
         file.touch()
-        file.write_text("[\n    \n]\n\n")
+        file.write_text("{\n    \"users\":[\n        \n    ]\n}\n\n")
         print("No config file exists. Creating new one at " + CONFIG_PATH)
         print("Exiting to allow the user to set up configuration")
         exit()
