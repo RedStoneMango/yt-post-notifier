@@ -45,12 +45,15 @@ def util_extract_posts(ytInitialData:dict) -> dict | None:
     tabs = util_find_element_or_else(ytInitialData, [], "contents", "twoColumnBrowseResultsRenderer", "tabs")
     if len(tabs) == 0: return None
 
+    contents = None
     for tab in tabs:
         if util_find_element_or_else(tab, "", "tabRenderer", "endpoint", "commandMetadata", "webCommandMetadata", "url").endswith("posts"):
             e = util_find_element_or_else(tab, None, "tabRenderer", "content", "sectionListRenderer", "contents")
             if e != None and len(e) != 0:
                 contents = e
                 break
+
+    if contents == None: return None
     
     allResults = []
     postsData = util_find_element_or_else(contents[0], [], "itemSectionRenderer", "contents")
