@@ -372,9 +372,29 @@ def run_test(type:str, arg:str, arg2:str):
         case "dump_config":
             print(json.dumps(read_config(), indent=4))
 
+def run_workflow():
+    config = read_config()
+    history = read_history()
+
+    any_match = 0
+
+    for user in config["users"]:
+        name = user["user_name"]
+        posts = load_posts_from_user(name)
+        if len(posts) != 0:
+            post = posts[0]
+            last_post = history.get(name)
+            if last_post == None or post["id"] != last_post:
+                notify(config, name, post["content"])
+                history[name] = post["id"]
+                any_match |= 1
+    
+    store_history(history)
+    exit(0 if any_match == 1 else 1)
+
 def main():
     if len(sys.argv) == 1:
-        print("Not yet implemented", file=sys.stderr)
+        run_workflow()
     elif sys.argv[1] != "test" or len(sys.argv) < 3:
         usage()
     else:
