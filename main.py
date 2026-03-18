@@ -314,7 +314,7 @@ def usage():
     print("Usage:", sys.argv[0], "                                # Runs the tool", file=sys.stderr)
     print("      ", sys.argv[0], "test scrape <USER_NAME>         # Prints the last posts of USER_NAME in a JSON format", file=sys.stderr)
     print("      ", sys.argv[0], "test notify <USER_NAME> <POST>  # Sends a test notification that USER_NAME posted a post with content POST, making use of the user's notification configuration", file=sys.stderr)
-    print("      ", sys.argv[0], "test display <USER_NAME>        # Renders the USER_NAME's posts in a seperate window", file=sys.stderr)
+    print("      ", sys.argv[0], "test display <USER_NAME>        # Shows USER_NAME's posts using the display method specified in the config", file=sys.stderr)
     print("      ", sys.argv[0], "test dump_config                # Loads the tool configuration, initilizeses defaults where needed and prints the whole config object in a JSON format", file=sys.stderr)
     exit(1)
 
