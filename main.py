@@ -97,7 +97,7 @@ def util_verify_config(config:dict):
         print("Invalid Config Structure: Config is no dict", file=sys.stderr)
         exit(1)
 
-    config.setdefault("notification_timeout", 60)
+    config.setdefault("notification_timeout", 15)
     if type(config["notification_timeout"]) != int:
         print("Invalid Config Structure: Field 'notification_timeout' is not an int", file=sys.stderr)
         exit(1)
@@ -168,9 +168,6 @@ def util_verify_config(config:dict):
         entry.setdefault("duration", 5)
         if type(entry["duration"]) != int:
             print("Invalid Config Structure: User entry field 'duration' is not of type int", file=sys.stderr)
-            exit(1)
-        if entry["duration"] < 1:
-            print("Invalid Config Structure: User entry field 'duration' is less than 1", file=sys.stderr)
             exit(1)
 
 def util_load_config() -> dict:
