@@ -14,7 +14,9 @@ from pathlib import Path
 from platformdirs import user_config_dir
 from desktop_notifier import DesktopNotifier, Urgency, Button, Icon, DEFAULT_ICON, Sound, DEFAULT_SOUND
 
-CONFIG_PATH = user_config_dir("yt-post-notifier") + "/config.json"
+CONFIG_DIR = user_config_dir("yt-post-notifier")
+CONFIG_PATH = CONFIG_DIR + "/config.json"
+HISTORY_PATH = CONFIG_DIR + "/history.json"
 
 def util_requestData(url:str) -> str | None:
     response = urllib.request("GET", url)
@@ -76,6 +78,19 @@ def util_extract_posts(ytInitialData:dict) -> dict | None:
         allResults.append(postResult)
 
     return allResults
+
+def util_verify_history(history:dict):
+    if type(history) != dict:
+        print("[ERROR]: History invalid: Not a dict!", file=sys.stderr)
+        exit(1)
+
+    for key in history:
+        if type(key) != str:
+            print("[ERROR]: History invalid: Key not a str!", file=sys.stderr)
+            exit(1)
+        if type(history[key]) != str:
+            print("[ERROR]: History invalid: Value not a str!", file=sys.stderr)
+            exit(1)
 
 def util_verify_config(config:dict):
     if type(config) != dict:
@@ -173,6 +188,24 @@ def util_load_config() -> dict:
         data = json.loads(content)
     except:
         print("Invalid Config Structure: Incorrect JSON", file=sys.stderr)
+        exit(1)
+
+    return data
+
+def util_load_history() -> dict:
+    file = Path(HISTORY_PATH)
+    if not file.exists():
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.touch()
+        file.write_text("{}")
+        print("No history file exists. Creating empty one at " + HISTORY_PATH)
+        return {}
+
+    content = file.read_text()
+    try:
+        data = json.loads(content)
+    except:
+        print("Invalid History Structure: Incorrect JSON", file=sys.stderr)
         exit(1)
 
     return data
@@ -309,6 +342,15 @@ def read_config() -> dict:
     config = util_load_config()
     util_verify_config(config)
     return config
+
+def read_history() -> dict:
+    history = util_load_history()
+    util_verify_history(history)
+    return history
+
+def store_history(history:dict):
+    hjson = json.dumps(history)
+    Path(HISTORY_PATH).write_text(hjson)
 
 def usage():
     print("Usage:", sys.argv[0], "                                # Runs the tool", file=sys.stderr)
