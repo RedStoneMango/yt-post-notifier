@@ -1,7 +1,8 @@
 @echo off
+SET SCRIPT_DIR=%~dp0
 
-call venv\Scripts\activate.bat
-python main.py %*
-set res=%ERRORLEVEL%
-call deactivate
-exit /b %res%
+CALL "%SCRIPT_DIR%venv\Scripts\activate.bat"
+python "%SCRIPT_DIR%main.py" %*
+SET res=%ERRORLEVEL%
+CALL "%SCRIPT_DIR%venv\Scripts\deactivate.bat"
+EXIT /B %res%
