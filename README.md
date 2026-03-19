@@ -2,9 +2,15 @@
 A small python script to check whether certain YouTube channels posted new community posts and notify you accordingly.
 
 ## Normal Usage
-The script can be started using
+The script can be started using one of these commands:
+
+Linux/OsX:
 ```bash
-./main.py
+./launch-unix
+```
+Windows:
+```cmd
+launch-windows.bat
 ```
 
 It will then automatically load your configuration, look for new posts and send you a system notification.
