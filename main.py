@@ -145,12 +145,12 @@ def util_verify_config(config:dict):
         if type(entry["message_text"]) != str:
             print("Invalid Config Structure: User entry field 'message_text' is not of type str", file=sys.stderr)
             exit(1)
-        entry.setdefault("icon", DEFAULT_ICON.path.as_uri())
-        if type(entry["icon"]) != str:
+        entry.setdefault("icon", None)
+        if entry["icon"] != None and type(entry["icon"]) != str:
             print("Invalid Config Structure: User entry field 'icon' is not of type str", file=sys.stderr)
             exit(1)
         try:
-            Icon(uri=entry["icon"])
+            if entry["icon"] != None: Icon(uri=entry["icon"])
         except:
             print("Invalid Config Structure: User entry field 'icon' is not a valid URI", file=sys.stderr)
             exit(1)
@@ -165,7 +165,7 @@ def util_verify_config(config:dict):
             except:
                 print("Invalid Config Structure: User entry field 'sound' is not a valid URI", file=sys.stderr)
                 exit(1)
-        entry.setdefault("duration", 5)
+        entry.setdefault("duration", -1)
         if type(entry["duration"]) != int:
             print("Invalid Config Structure: User entry field 'duration' is not of type int", file=sys.stderr)
             exit(1)
@@ -217,7 +217,7 @@ def util_create_urgency(config:dict) -> Urgency:
     return Urgency.Low if val == -1 else (Urgency.Normal if val == 0 else Urgency.Critical)
 
 def util_create_icon(config:dict) -> Icon:
-    return Icon(uri=config["icon"])
+    return Icon(uri=config["icon"]) if config["icon"] != None else None
 
 def util_create_sound(config:dict) -> Sound:
     return Sound(uri=config["sound"]) if config["sound"] != DEFAULT_SOUND.name else DEFAULT_SOUND
