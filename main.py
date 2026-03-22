@@ -104,7 +104,7 @@ def util_verify_history(history:dict):
         if not val.__contains__("read"):
             print("[ERROR]: History invalid: Value does not contain attribute 'read'!", file=sys.stderr)
             exit(1)
-        if type(val["read"]) != str:
+        if type(val["read"]) not in [str, type(None)]:
             print("[ERROR]: History invalid: Attribute 'read' of value is not a str!", file=sys.stderr)
             exit(1)        
 
@@ -333,7 +333,7 @@ def load_posts_from_user(user:str) -> list:
 
     return posts
 
-def notify(configs:dict, user:str, post:str):
+def notify(configs:dict, user:str, post:str) -> bool:
     config = util_find_user_config(configs, user)
     if config == None:
         print("[Warning]: Cannot find configuration for user " + user, file=sys.stderr)
@@ -350,6 +350,7 @@ def notify(configs:dict, user:str, post:str):
         configs["notification_timeout"],
         lambda: display_post(configs, user, display_name)
     ))
+    return False # TODO: Implement actual behavior
 
 def read_config() -> dict:
     config = util_load_config()
@@ -379,7 +380,10 @@ def run_test(type:str, arg:str, arg2:str):
         case "scrape":
             print(json.dumps(load_posts_from_user(arg), indent=4))
         case "notify":
-            notify(read_config(), arg, arg2)
+            if notify(read_config(), arg, arg2):
+                print("User has read the notification")
+            else:
+                print("User has not read the notification")
         case "display":
             config = read_config()
             display_post(config, arg, util_find_user_config(config, arg)["display_name"])
@@ -397,10 +401,15 @@ def run_workflow(check_read:bool):
         posts = load_posts_from_user(name)
         if len(posts) != 0:
             post = posts[0]
-            last_post = history.get(name)
-            if last_post == None or post["id"] != last_post:
-                notify(config, name, post["content"])
-                history[name] = post["id"]
+            last_post_data = history.get(name)
+            if last_post_data != None:
+                last_post = last_post_data["read" if check_read else "visited"]
+            
+            if last_post_data == None or post["id"] != last_post:
+                has_read = notify(config, name, post["content"])
+                history.setdefault(name, {})
+                history[name]["read"] = post["id"] if has_read else None
+                history[name]["visited"] = post["id"]
                 any_match |= 1
     
     store_history(history)
