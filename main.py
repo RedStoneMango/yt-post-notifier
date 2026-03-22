@@ -238,16 +238,24 @@ def util_create_icon(config:dict) -> Icon:
 def util_create_sound(config:dict) -> Sound:
     return Sound(uri=config["sound"]) if config["sound"] != DEFAULT_SOUND.name else DEFAULT_SOUND
         
-async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound, urgency:Urgency, duration:int, timeout:int, action:Callable[[], Any]):
+async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound, urgency:Urgency, duration:int, timeout:int, action:Callable[[], Any]) -> bool:
     notifier = DesktopNotifier(app_name="Yt-Post-Notifier", app_icon=icon)
 
     done_event = asyncio.Event()
+    result = asyncio.get_running_loop().create_future()
 
     def wrapped_action():
         try:
+            if not result.done():
+                result.set_result(True)
             action()
         finally:
             done_event.set()
+
+    def on_read():
+        if not result.done():
+            result.set_result(True)
+        done_event.set()
 
     def on_dismissed():
         done_event.set()
@@ -269,6 +277,10 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
             Button(
                 title="Open Posts",
                 on_pressed=wrapped_action,
+            ),
+            Button(
+                title="Mark As Read",
+                on_pressed=on_read,
             )
         ],
         on_clicked=wrapped_action,
@@ -282,6 +294,7 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
     loop.add_signal_handler(signal.SIGTERM, done_event.set)
 
     await done_event.wait()
+    return result.result() if result.done() else False
 
 def util_format_text(format:str, name:str, post:str) -> str:
     named = format.replace("${NAME}", name)
@@ -340,7 +353,7 @@ def notify(configs:dict, user:str, post:str) -> bool:
         return
 
     display_name = config["display_name"]
-    asyncio.run(util_send_notification(
+    return asyncio.run(util_send_notification(
         util_format_text(config["title_text"], display_name, post),
         util_format_text(config["message_text"], display_name, post),
         util_create_icon(config),
@@ -350,7 +363,6 @@ def notify(configs:dict, user:str, post:str) -> bool:
         configs["notification_timeout"],
         lambda: display_post(configs, user, display_name)
     ))
-    return False # TODO: Implement actual behavior
 
 def read_config() -> dict:
     config = util_load_config()
