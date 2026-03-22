@@ -2,23 +2,35 @@
 A small python script to check whether certain YouTube channels posted new community posts and notify you accordingly.
 
 ## Normal Usage
-The script can be started using one of these commands:
+The script can be started using this syntax:
 
 Linux/OsX:
 ```bash
-./launch-unix
+./launch-unix run <MODE>
 ```
 Windows:
 ```cmd
-launch-windows.bat
+launch-windows.bat run <MODE>
 ```
 
-It will then automatically load your configuration, look for new posts and send you a system notification.
+For explaination on the `<MODE>` argument, have a look at the [execution modes](#execution-modes)
 
 The script exists with exit code 1 if no new post was found. Post 0 indicates that at least one notification was sent.
 
 > [!IMPORTANT]
 > When calling the script for the first time, it will create a configuration file and then exist so you can configure it the way you want.
+
+## Execution Modes
+This tool can be executed in two modes:
+
+|             | check_unvisited | check_unread |
+| ----------- | --------------- | ------------ |
+| **Description** | Looks for newly posted posts | Looks for posts the user hasn't explicitely acknowledged |
+| **Details** | If the YouTube channel posted something new, this will identity that post. If the post is old (has already benn indexed), no notification will be sent | If the YouTube channel posted something new, this will identity the post. If the post is old (has already benn indexed) but the user has not clicked the "Open Posts" or "Mark As Read" button, a notification will be sent |
+| **Advantage** | Notifies you only once per post | Enables you to check whether you have missed a post notification |
+| **Disadvantage** | When not at the PC, you might miss a post notification without noticing | Might motify you multiple times per post |
+| **Typical use case** | Actively monitoring notifications while duplicates | Safety net to ensure no posts are overlooked, even if you miss a notification |
+
 
 ## Configuration
 This script stores its notifications in a folder named **yt-post-notifier** in your system's configuration path.
