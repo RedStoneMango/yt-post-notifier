@@ -88,9 +88,25 @@ def util_verify_history(history:dict):
         if type(key) != str:
             print("[ERROR]: History invalid: Key not a str!", file=sys.stderr)
             exit(1)
-        if type(history[key]) != str:
-            print("[ERROR]: History invalid: Value not a str!", file=sys.stderr)
+
+        val = history[key]
+        if type(val) != dict:
+            print("[ERROR]: History invalid: Value not a dict!", file=sys.stderr)
             exit(1)
+
+        if not val.__contains__("visited"):
+            print("[ERROR]: History invalid: Value does not contain attribute 'visited'!", file=sys.stderr)
+            exit(1)
+        if type(val["visited"]) != str:
+            print("[ERROR]: History invalid: Attribute 'visited' of value is not a str!", file=sys.stderr)
+            exit(1)
+
+        if not val.__contains__("read"):
+            print("[ERROR]: History invalid: Value does not contain attribute 'read'!", file=sys.stderr)
+            exit(1)
+        if type(val["read"]) != str:
+            print("[ERROR]: History invalid: Attribute 'read' of value is not a str!", file=sys.stderr)
+            exit(1)        
 
 def util_verify_config(config:dict):
     if type(config) != dict:
