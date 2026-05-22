@@ -416,18 +416,27 @@ def run_workflow(check_read:bool):
     for user in config["users"]:
         name = user["user_name"]
         posts = load_posts_from_user(name)
-        if len(posts) != 0:
-            post = posts[0]
-            last_post_data = history.get(name)
+        last_post_data = history.get(name)
+        # Not required but I like this to be explicit
+        post_obj = None
+        post_count = 0
+
+        for post in posts:
             if last_post_data != None:
-                last_post = last_post_data["read" if check_read else "visited"]
-            
-            if last_post_data == None or post["id"] != last_post:
-                has_read = notify(config, name, post["content"], 1)
-                history.setdefault(name, {})
-                history[name]["read"] = post["id"] if has_read else None
-                history[name]["visited"] = post["id"]
-                any_match |= 1
+                obj = last_post_data["read" if check_read else "visited"]
+
+            if last_post_data == None or post["id"] != obj:
+                post_count += 1
+                if post_obj == None: post_obj = post
+            else:
+                break
+
+        if post_obj != None:
+            has_read = notify(config, name, post_obj["content"], post_count)
+            history.setdefault(name, {})
+            history[name]["read"] = post_obj["id"] if has_read else None
+            history[name]["visited"] = post_obj["id"]
+            any_match |= 1
     
     store_history(history)
     exit(0 if any_match == 1 else 1)
