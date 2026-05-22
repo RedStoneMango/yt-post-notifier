@@ -298,7 +298,8 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
 
 def util_format_text(format:str, name:str, post:str, post_count:int) -> str:
     named = format.replace("${NAME}", name)
-    counted = named.replace("${COUNT}", str(post_count))
+    expanded = named.replace("${PLURAL_S}", "s" if post_count != 1 else "")
+    counted = expanded.replace("${COUNT}", str(post_count))
     matches = re.finditer("\\${POST(?:;(\\d+))?\\}", counted)
     if matches == None: return named
 
