@@ -385,7 +385,7 @@ def usage():
     print("      ", sys.argv[0], "run check_unread                # Runs the tool in check_unread mode. It will automatically look for new posts the user hasn't explicitely acknowledged by interacting with the notification and notify you if a post was found. Useful for manual execution", file=sys.stderr)
     print("      ", sys.argv[0], "test dump_config                # Loads the tool configuration, initilizeses defaults where needed and prints the whole config object in a JSON format", file=sys.stderr)
     print("      ", sys.argv[0], "test scrape <USER_NAME>         # Prints the last posts of USER_NAME in a JSON format where USER_NAME is the YouTube user name of the account", file=sys.stderr)
-    print("      ", sys.argv[0], "test notify <USER_NAME> <POST>  # Sends a test notification that USER_NAME posted a post with content POST; making use of the user's notification configuration", file=sys.stderr)
+    print("      ", sys.argv[0], "test notify <USER_NAME> <POST> <COUNT>  # Sends a test notification that USER_NAME posted COUNT new posts with content POST; making use of the user's notification configuration", file=sys.stderr)
     print("      ", sys.argv[0], "test display <USER_NAME>        # Shows USER_NAME's posts using the display method specified in the config", file=sys.stderr)
     exit(1)
 
