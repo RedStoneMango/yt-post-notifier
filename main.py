@@ -296,9 +296,10 @@ async def util_send_notification(title:str, message:str, icon:Icon, sound:Sound,
     await done_event.wait()
     return result.result() if result.done() else False
 
-def util_format_text(format:str, name:str, post:str) -> str:
+def util_format_text(format:str, name:str, post:str, post_count:int) -> str:
     named = format.replace("${NAME}", name)
-    matches = re.finditer("\\${POST(?:;(\\d+))?\\}", named)
+    counted = named.replace("${COUNT}", str(post_count))
+    matches = re.finditer("\\${POST(?:;(\\d+))?\\}", counted)
     if matches == None: return named
 
     offset = 0
@@ -314,10 +315,10 @@ def util_format_text(format:str, name:str, post:str) -> str:
             maxChars = int(size)
             tr_post = (post[:maxChars] + '...') if len(post) > maxChars else post
 
-        named = named[:start + offset] + tr_post + named[end + offset:]
+        counted = counted[:start + offset] + tr_post + counted[end + offset:]
         offset -= len(exp) - len(tr_post)
         
-    return named
+    return counted
 
 def util_display_post_internally(user:str, display_name:str):
     import webview # Only import here in case the user doesnt want to use the webview and import the dependencies
@@ -346,7 +347,7 @@ def load_posts_from_user(user:str) -> list:
 
     return posts
 
-def notify(configs:dict, user:str, post:str) -> bool:
+def notify(configs:dict, user:str, post:str, post_count:int) -> bool:
     config = util_find_user_config(configs, user)
     if config == None:
         print("[Warning]: Cannot find configuration for user " + user, file=sys.stderr)
@@ -354,8 +355,8 @@ def notify(configs:dict, user:str, post:str) -> bool:
 
     display_name = config["display_name"]
     return asyncio.run(util_send_notification(
-        util_format_text(config["title_text"], display_name, post),
-        util_format_text(config["message_text"], display_name, post),
+        util_format_text(config["title_text"], display_name, post, post_count),
+        util_format_text(config["message_text"], display_name, post, post_count),
         util_create_icon(config),
         util_create_sound(config),
         util_create_urgency(config),
@@ -387,12 +388,15 @@ def usage():
     print("      ", sys.argv[0], "test display <USER_NAME>        # Shows USER_NAME's posts using the display method specified in the config", file=sys.stderr)
     exit(1)
 
-def run_test(type:str, arg:str, arg2:str):
+def run_test(type:str, arg:str, arg2:str, arg3:str):
     match type:
         case "scrape":
             print(json.dumps(load_posts_from_user(arg), indent=4))
         case "notify":
-            if notify(read_config(), arg, arg2):
+            if not arg3.isdigit():
+                print(arg3, "is not a number", file=sys.stderr)
+                return
+            if notify(read_config(), arg, arg2, int(arg3)):
                 print("User has read the notification")
             else:
                 print("User has not read the notification")
@@ -418,7 +422,7 @@ def run_workflow(check_read:bool):
                 last_post = last_post_data["read" if check_read else "visited"]
             
             if last_post_data == None or post["id"] != last_post:
-                has_read = notify(config, name, post["content"])
+                has_read = notify(config, name, post["content"], 1)
                 history.setdefault(name, {})
                 history[name]["read"] = post["id"] if has_read else None
                 history[name]["visited"] = post["id"]
@@ -436,13 +440,13 @@ def main():
         if sys.argv[2] not in ["scrape", "notify", "display", "dump_config"]: usage()
         if sys.argv[2] == "dump_config":
             if len(sys.argv) != 3: usage()
-            run_test("dump_config", None, None)
+            run_test("dump_config", None, None, None)
         elif sys.argv[2] == "notify":
-            if len(sys.argv) != 5: usage()
-            run_test("notify", sys.argv[3], sys.argv[4])
+            if len(sys.argv) != 6: usage()
+            run_test("notify", sys.argv[3], sys.argv[4], sys.argv[5])
         else:
             if len(sys.argv) != 4: usage()
-            run_test(sys.argv[2], sys.argv[3], None)
+            run_test(sys.argv[2], sys.argv[3], None, None)
     else:
         if sys.argv[2] not in ["check_unvisited", "check_unread"]: usage()
         run_workflow(sys.argv[2] == "check_unread")
