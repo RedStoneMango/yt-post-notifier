@@ -157,7 +157,7 @@ def util_verify_config(config:dict):
         if type(entry["title_text"]) != str:
             print("Invalid Config Structure: User entry field 'title_text' is not of type str", file=sys.stderr)
             exit(1)
-        entry.setdefault("message_text", "${NAME} posted a new community post: ${POST;100}")
+        entry.setdefault("message_text", "${NAME} posted ${COUNT} new community post${PLURAL_S}: ${POST;100}")
         if type(entry["message_text"]) != str:
             print("Invalid Config Structure: User entry field 'message_text' is not of type str", file=sys.stderr)
             exit(1)
